@@ -82,22 +82,33 @@ def package_assets(project_path, export_path):
     """
     Create .pak files from the loose assets, which are placed in the exported directory.
     """
-    assetpath = os.path.join(project_path, 'Assets')
-    for itemname in os.listdir(assetpath):
-        itempath = os.path.join(project_path, 'Assets', itemname)
+    input_assetpath = os.path.join(project_path, 'Assets')
+    output_assetpath = os.path.join(export_path, 'Assets')
+
+    if not os.path.exists(output_assetpath):
+        os.makedirs(output_assetpath)
+
+    for itemname in os.listdir(input_assetpath):
+        itempath = os.path.join(input_assetpath, itemname)
+
+        # Levels are handled elsewhere.
         if 'levels' in itempath.lower():
             continue
 
+        # .cryasset.pak files are editor-only, and so do not belong in exported projects.
+        if itempath.endswith('.cryasset.pak'):
+            continue
+
         if os.path.isfile(itempath):
-            shutil.copyfile(itempath, os.path.join(export_path, 'Assets', itemname))
+            shutil.copyfile(itempath, os.path.join(output_assetpath, itemname))
         else:
             zip_cmd = ['7z',
                        'a',
                        '-r',
                        '-tzip',
                        '-mx0',
-                       os.path.join(export_path, 'Assets', '{}.pak'.format(itemname)),
-                       os.path.join(assetpath, 'Assets', itempath)]
+                       os.path.join(output_assetpath, '{}.pak'.format(itemname)),
+                       os.path.join(input_assetpath, itempath)]
             print('"{}"'.format(' '.join(zip_cmd)))
             subprocess.check_call(zip_cmd)
     return
@@ -128,7 +139,7 @@ def copy_game_dll(project_path, export_path):
 
 
 def main():
-    engine_version = '5.2'
+    engine_version = '5.3'
     engine_path = r'C:\Program Files (x86)\Crytek\CRYENGINE Launcher\Crytek\CRYENGINE_{}'.format(engine_version)
 
     # Path to the project as created by the launcher.
@@ -136,6 +147,10 @@ def main():
 
     # Path to which the game is to be exported.
     export_path = os.path.join(os.environ['HOMEDRIVE'], os.environ['HOMEPATH'], 'Desktop', 'ce_game')
+
+    # Ensure that only the current data are exported, making sure that errors are reported.
+    if os.path.exists(export_path):
+        shutil.rmtree(export_path)
 
     # Copy engine (common) files.
     shutil.copytree(os.path.join(engine_path, 'engine'), os.path.join(export_path, 'engine'))
