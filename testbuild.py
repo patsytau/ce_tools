@@ -9,7 +9,7 @@ TARGET_TO_SLN_TAG = {
 }
 
 
-def get_installed_vs_versions():
+def check_installed_vs_versions():
     """
     Query the registry to find installed VS versions. Assumes that C++ support has been installed.
     Throws an exception if the expected version of VS is not present.
@@ -113,6 +113,8 @@ if __name__ == '__main__':
     parser.add_argument('--config', default='profile', choices=['debug', 'profile', 'release'],
                         help='Compilation configuration (.')
     args = parser.parse_args()
+
+    check_installed_vs_versions()
 
     main(repository=args.repository,
          branch=args.branch,
