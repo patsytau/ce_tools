@@ -1,14 +1,7 @@
 import os
+import argparse
 import platform
 import subprocess
-
-
-# Group these here for transparency and easy editing.
-USED_REPOSITORY = 'CRYENGINE'
-USED_TARGET = 'win_x86'
-USED_CONFIG = 'Profile'
-USED_BRANCH = 'release'
-USED_VS_VERSION = '14.0'
 
 TARGET_TO_SLN_TAG = {
     'win_x86': 'Win32',
@@ -42,21 +35,18 @@ def get_installed_vs_versions():
     # If a subkey includes '.0' it's almost certainly a version number. I've yet to see one without that.
     available_versions = [version for version in subkeys if '.0' in version]
 
-    if USED_VS_VERSION not in available_versions:
-        raise OSError('Visual Studio version {} is not installed (available: {}).'.format(USED_VS_VERSION,
+    if args.vcversion not in available_versions:
+        raise OSError('Visual Studio version {} is not installed (available: {}).'.format(args.vcversion,
                                                                                           available_versions))
 
 
-def main():
+def main(repository, branch, target, config, vcversion):
     """
     Get code from GitHub and perform an incremental build.
     Assumes that the required SDKs directory is called 'SDKs' and is directly adjacent to the repo checkout directory.
     """
-    repository = USED_REPOSITORY
-    branch = USED_BRANCH
-    target = USED_TARGET
-    config = USED_CONFIG
-    build_dir = '_'.join([target, config.lower()])
+
+    build_dir = '_'.join([target, config])
 
     steps = {
         'clone': ['git', 'clone', 'https://github.com/CRYTEK-CRYENGINE/{repo}.git'.format(repo=repository)],
@@ -68,7 +58,7 @@ def main():
 
         # For now, assume Windows for convenience.
         'configure': ['cmake', r'-DCMAKE_TOOLCHAIN_FILE=Tools\CMake\toolchain\windows\WindowsPC-MSVC.cmake', '..'],
-        'build': [os.path.normpath(r'C:\Program Files (x86)\MSBuild\{}\Bin\MSBuild.exe'.format(USED_VS_VERSION)),
+        'build': [os.path.normpath(r'C:\Program Files (x86)\MSBuild\{}\Bin\MSBuild.exe'.format(vcversion)),
                   '/property:Configuration={}'.format(config),
                   'CryEngine_CMake_{}.sln'.format(TARGET_TO_SLN_TAG.get(target))]
     }
@@ -115,4 +105,17 @@ def runstep(steps, name):
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser('Test compilation of a CRYENGINE git repository.')
+    parser.add_argument('--repository', default='CRYENGINE', help='Repository name.')
+    parser.add_argument('--branch', default='release', help='Branch name.')
+    parser.add_argument('--target', default='win_x86', help='Compilation target.')
+    parser.add_argument('--vcversion', default='14.0', help='VC++ Version')
+    parser.add_argument('--config', default='profile', choices=['debug', 'profile', 'release'],
+                        help='Compilation configuration (.')
+    args = parser.parse_args()
+
+    main(repository=args.repository,
+         branch=args.branch,
+         target=args.target,
+         config=args.config,
+         vcversion=args.vcversion)
