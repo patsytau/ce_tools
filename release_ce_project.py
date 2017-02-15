@@ -1,7 +1,7 @@
 #!python3
 """
 This script combines the required engine and project files into a single directory.
-It does not package the assets into .pak files, it simply collects the files that are present.
+It also creates .pak files from the asset directory and writes an appropriate system.cfg.
 """
 import os
 import shutil
