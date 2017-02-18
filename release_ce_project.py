@@ -8,7 +8,6 @@ import shutil
 import fnmatch
 import subprocess
 
-os.environ['PATH'] = os.environ['PATH'] + os.pathsep + r"C:\Program Files\7-Zip"
 dll_name = 'Game.dll'
 
 
@@ -93,6 +92,11 @@ def package_assets(project_path, export_path):
     if not os.path.exists(output_assetpath):
         os.makedirs(output_assetpath)
 
+    # Use 7-zip if it exists, because it's generally faster.
+    use_7zip = os.path.exists(r"C:\Program Files\7-Zip")
+    if use_7zip:
+        os.environ['PATH'] = os.environ['PATH'] + os.pathsep + r"C:\Program Files\7-Zip"
+
     for itemname in os.listdir(input_assetpath):
         itempath = os.path.join(input_assetpath, itemname)
 
@@ -107,15 +111,22 @@ def package_assets(project_path, export_path):
         if os.path.isfile(itempath):
             shutil.copyfile(itempath, os.path.join(output_assetpath, itemname))
         else:
-            zip_cmd = ['7z',
-                       'a',
-                       '-r',
-                       '-tzip',
-                       '-mx0',
-                       os.path.join(output_assetpath, '{}.pak'.format(itemname)),
-                       os.path.join(input_assetpath, itempath)]
-            print('"{}"'.format(' '.join(zip_cmd)))
-            subprocess.check_call(zip_cmd)
+            if use_7zip:
+                zip_cmd = ['7z',
+                           'a',
+                           '-r',
+                           '-tzip',
+                           '-mx0',
+                           os.path.join(output_assetpath, '{}.pak'.format(itemname)),
+                           os.path.join(input_assetpath, itempath)]
+                subprocess.check_call(zip_cmd)
+            else:
+                pakname = shutil.make_archive(base_name=os.path.join(output_assetpath, itemname),
+                                              format='zip',
+                                              root_dir=input_assetpath,
+                                              base_dir=itemname)
+                shutil.move(pakname, pakname.replace('.zip', '.pak'))
+            print('Created {}.pak'.format(itemname))
     return
 
 
