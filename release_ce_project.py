@@ -14,10 +14,10 @@ dll_name = 'Game.dll'
 
 
 def main():
-    engine_path = get_engine_path('5.3')
-
-    # Path to the project as created by the launcher.
-    project_path = os.path.join(engine_path, 'Templates', 'cpp', 'RollingBall')
+    # Path to the project file as created by the launcher - engine and project path are derivable from this.
+    cryproject_file = ''
+    project_path = os.path.dirname(cryproject_file)
+    engine_path = get_engine_path(cryproject_file)
 
     # Path to which the game is to be exported.
     export_path = os.path.join(os.environ['HOMEDRIVE'], os.environ['HOMEPATH'], 'Desktop', 'ce_game')
@@ -179,14 +179,21 @@ def copy_game_dll(project_path, export_path):
                         os.path.join(export_path, 'bin', 'win_x64', filename))
 
 
-def get_engine_path(version):
+def get_engine_path(cryproject_file):
     """
-    Find the path of the specified engine version by querying the registry on Windows.
+    Find the path to the project's engine by querying the registry on Windows.
     At the moment there is no way to register engine locations on Linux, so it is left as
     an exercise to the user to specify paths/determine a lookup scheme there.
-    :param version: Engine version whose path we want, in the format A.B (e.g. 5.3).
-    :return: Absolute path to the engine.
+    :param cryproject_file: Path of the '.cryproject' file.
+    :return: Absolute path to the engine use by this project.
     """
+
+    with open(cryproject_file) as fd:
+        project_data = json.load(fd)
+
+    engine_tag = project_data['require']['engine']
+    version = engine_tag.split('-')[1]              # 'engine-5.3' -> '5.3'
+
     engine_paths = {}
 
     if platform.system() == 'Windows':
@@ -211,6 +218,7 @@ def get_engine_path(version):
     if version not in engine_paths:
         raise OSError('Engine version {} not found.'.format(version))
 
+    print('Using engine path "{}".'.format(engine_paths[version]))
     return engine_paths[version]
 
 
