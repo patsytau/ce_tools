@@ -101,7 +101,8 @@ def runstep(steps, name):
     :param name: Name of the step to run.
     """
     print('Running {} step with command "{}".'.format(name, ' '.join(steps[name])))
-    subprocess.check_call(steps[name])
+    if not args.testrun:
+        subprocess.check_call(steps[name])
 
 
 if __name__ == '__main__':
@@ -112,6 +113,7 @@ if __name__ == '__main__':
     parser.add_argument('--vcversion', default='14.0', help='VC++ Version')
     parser.add_argument('--config', default='profile', choices=['debug', 'profile', 'release'],
                         help='Compilation configuration (.')
+    parser.add_argument('--testrun', default=False, action='store_true')
     args = parser.parse_args()
 
     check_installed_vs_versions()
