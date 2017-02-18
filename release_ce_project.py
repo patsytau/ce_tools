@@ -27,7 +27,7 @@ def main():
         shutil.rmtree(export_path)
 
     # Copy engine (common) files.
-    shutil.copytree(os.path.join(engine_path, 'engine'), os.path.join(export_path, 'engine'))
+    copy_engine_assets(engine_path, export_path)
     copy_engine_binaries(engine_path, export_path, os.path.join('bin', 'win_x64'))
 
     # Copy project-specific files.
@@ -82,6 +82,19 @@ def copy_engine_binaries(engine_path, export_path, rel_dir):
         if not os.path.exists(os.path.dirname(destpath)):
             os.makedirs(os.path.dirname(destpath))
         shutil.copy(os.path.join(engine_path, path), destpath)
+
+
+def copy_engine_assets(engine_path, export_path):
+    """
+    Copy the engine assets, making sure to avoid .cryasset.pak files.
+    """
+    os.makedirs(os.path.join(export_path, 'engine'))
+
+    for pakfile in os.listdir(os.path.join(engine_path, 'engine')):
+        if pakfile.endswith('.cryasset.pak'):
+            continue
+        shutil.copyfile(os.path.join(engine_path, 'engine', pakfile),
+                        os.path.join(export_path, 'engine', pakfile))
 
 
 def copy_levels(project_path, export_path):
