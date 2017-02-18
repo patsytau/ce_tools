@@ -13,6 +13,30 @@ import subprocess
 dll_name = 'Game.dll'
 
 
+def main():
+    engine_path = get_engine_path('5.3')
+
+    # Path to the project as created by the launcher.
+    project_path = os.path.join(engine_path, 'Templates', 'cpp', 'RollingBall')
+
+    # Path to which the game is to be exported.
+    export_path = os.path.join(os.environ['HOMEDRIVE'], os.environ['HOMEPATH'], 'Desktop', 'ce_game')
+
+    # Ensure that only the current data are exported, making sure that errors are reported.
+    if os.path.exists(export_path):
+        shutil.rmtree(export_path)
+
+    # Copy engine (common) files.
+    shutil.copytree(os.path.join(engine_path, 'engine'), os.path.join(export_path, 'engine'))
+    copy_engine_binaries(engine_path, export_path, os.path.join('bin', 'win_x64'))
+
+    # Copy project-specific files.
+    package_assets(project_path, export_path)
+    copy_levels(project_path, export_path)
+    copy_game_dll(project_path, export_path)
+    create_config(export_path)
+
+
 def copy_engine_binaries(engine_path, export_path, rel_dir):
     """
     Copy a directory to its corresponding location in the export directory.
@@ -188,30 +212,6 @@ def get_engine_path(version):
         raise OSError('Engine version {} not found.'.format(version))
 
     return engine_paths[version]
-
-
-def main():
-    engine_path = get_engine_path('5.3')
-
-    # Path to the project as created by the launcher.
-    project_path = os.path.join(engine_path, 'Templates', 'cpp', 'RollingBall')
-
-    # Path to which the game is to be exported.
-    export_path = os.path.join(os.environ['HOMEDRIVE'], os.environ['HOMEPATH'], 'Desktop', 'ce_game')
-
-    # Ensure that only the current data are exported, making sure that errors are reported.
-    if os.path.exists(export_path):
-        shutil.rmtree(export_path)
-
-    # Copy engine (common) files.
-    shutil.copytree(os.path.join(engine_path, 'engine'), os.path.join(export_path, 'engine'))
-    copy_engine_binaries(engine_path, export_path, os.path.join('bin', 'win_x64'))
-
-    # Copy project-specific files.
-    package_assets(project_path, export_path)
-    copy_levels(project_path, export_path)
-    copy_game_dll(project_path, export_path)
-    create_config(export_path)
 
 
 if __name__ == '__main__':
