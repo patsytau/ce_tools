@@ -4,8 +4,10 @@ This script combines the required engine and project files into a single directo
 It also creates .pak files from the asset directory and writes an appropriate system.cfg.
 """
 import os
+import json
 import shutil
 import fnmatch
+import platform
 import subprocess
 
 dll_name = 'Game.dll'
@@ -51,7 +53,6 @@ def copy_engine_binaries(engine_path, export_path, rel_dir):
         for pattern in excludes:
             excluded = excluded or fnmatch.fnmatch(path, os.path.join(rel_dir, pattern))
         if excluded:
-            print('Excluding path: {}'.format(path))
             continue
         destpath = os.path.normpath(os.path.join(export_path, path))
         if not os.path.exists(os.path.dirname(destpath)):
@@ -154,9 +155,43 @@ def copy_game_dll(project_path, export_path):
                         os.path.join(export_path, 'bin', 'win_x64', filename))
 
 
+def get_engine_path(version):
+    """
+    Find the path of the specified engine version by querying the registry on Windows.
+    At the moment there is no way to register engine locations on Linux, so it is left as
+    an exercise to the user to specify paths/determine a lookup scheme there.
+    :param version: Engine version whose path we want, in the format A.B (e.g. 5.3).
+    :return: Absolute path to the engine.
+    """
+    engine_paths = {}
+
+    if platform.system() == 'Windows':
+        import winreg
+        reg = winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER)
+        ce_key = winreg.OpenKey(reg, r'SOFTWARE\Crytek\CryEngine')
+
+        # The first value of the key is a null entry, so check for this.
+        try:
+            i = 0
+            while True:
+                ver, path, _ = winreg.EnumValue(ce_key, i)
+                if ver:
+                    engine_paths[ver] = path
+                i += 1
+        except OSError:
+            pass
+    else:
+        print('Engine path lookups are currently only possible on Windows.')
+
+    print('Found the following engines = {}'.format(json.dumps(engine_paths, indent=4)))
+    if version not in engine_paths:
+        raise OSError('Engine version {} not found.'.format(version))
+
+    return engine_paths[version]
+
+
 def main():
-    engine_version = '5.3'
-    engine_path = r'C:\Program Files (x86)\Crytek\CRYENGINE Launcher\Crytek\CRYENGINE_{}'.format(engine_version)
+    engine_path = get_engine_path('5.3')
 
     # Path to the project as created by the launcher.
     project_path = os.path.join(engine_path, 'Templates', 'cpp', 'RollingBall')
