@@ -33,7 +33,12 @@ def copy_engine_binaries(engine_path, export_path, rel_dir):
                 'icu*',
                 'python27*',
                 'LuaCompiler*',
-                'Editor**']
+                'Editor**',
+                'PySide2*',
+                'shiboken*',
+                'crashrpt*',
+                'CrashSender*'
+                ]
 
     pwd = os.getcwd()
     os.chdir(engine_path)
