@@ -18,13 +18,16 @@ def main():
     cryproject_file = ''
 
     with open(cryproject_file) as fd:
-        project_data = json.load(fd)
+        project_cfg = json.load(fd)
 
     project_path = os.path.dirname(cryproject_file)
-    engine_path = get_engine_path(project_data)
+    engine_path = get_engine_path(project_cfg)
 
     # Path to which the game is to be exported.
-    export_path = os.path.join(os.environ['HOMEDRIVE'], os.environ['HOMEPATH'], 'Desktop', 'ce_game')
+    export_path = os.path.join(os.environ['HOMEDRIVE'],
+                               os.environ['HOMEPATH'],
+                               'Desktop',
+                               project_cfg['info']['name'])
 
     # Ensure that only the current data are exported, making sure that errors are reported.
     if os.path.exists(export_path):
@@ -34,14 +37,16 @@ def main():
     copy_engine_assets(engine_path, export_path)
     copy_engine_binaries(engine_path, export_path, os.path.join('bin', 'win_x64'))
 
-    if 'csharp' in project_data:
+    if 'csharp' in project_cfg:
         copy_mono_files(engine_path, export_path)
 
     # Copy project-specific files.
-    package_assets(project_path, export_path)
-    copy_levels(project_path, export_path)
     copy_game_dll(project_path, export_path)
-    create_config(export_path)
+
+    asset_dir = project_cfg['content']['assets'][0]
+    package_assets(asset_dir, project_path, export_path)
+    copy_levels(asset_dir, project_path, export_path)
+    create_config(asset_dir, export_path)
 
 
 def copy_engine_binaries(engine_path, export_path, rel_dir):
@@ -122,35 +127,37 @@ def copy_engine_assets(engine_path, export_path):
                         os.path.join(export_path, 'engine', pakfile))
 
 
-def copy_levels(project_path, export_path):
+def copy_levels(asset_dir, project_path, export_path):
     """
     Copy required level files to the export directory.
     """
     pwd = os.getcwd()
-    os.chdir(os.path.join(project_path, 'Assets'))
+    os.chdir(os.path.join(project_path, asset_dir))
 
+    # Other files are only required by the editor.
     level_files = ['filelist.xml', 'terraintexture.pak', 'level.pak']
 
     for root, _, filenames in os.walk('levels'):
         for filename in filenames:
             if filename not in level_files:
                 continue
+
             path = os.path.normpath(os.path.join(root, filename))
-            destpath = os.path.normpath(os.path.join(export_path, 'Assets', path))
+            destpath = os.path.normpath(os.path.join(export_path, asset_dir, path))
             if not os.path.exists(os.path.dirname(destpath)):
                 os.makedirs(os.path.dirname(destpath))
-            shutil.copy(os.path.join(project_path, 'Assets', path), destpath)
+            shutil.copy(os.path.join(project_path, asset_dir, path), destpath)
 
     os.chdir(pwd)
     return
 
 
-def package_assets(project_path, export_path):
+def package_assets(asset_dir, project_path, export_path):
     """
     Create .pak files from the loose assets, which are placed in the exported directory.
     """
-    input_assetpath = os.path.join(project_path, 'Assets')
-    output_assetpath = os.path.join(export_path, 'Assets')
+    input_assetpath = os.path.join(project_path, asset_dir)
+    output_assetpath = os.path.join(export_path, asset_dir)
 
     if not os.path.exists(output_assetpath):
         os.makedirs(output_assetpath)
@@ -193,9 +200,9 @@ def package_assets(project_path, export_path):
     return
 
 
-def create_config(export_path):
+def create_config(asset_dir, export_path):
     with open(os.path.join(export_path, 'system.cfg'), 'w') as fd:
-        fd.write('sys_game_folder=Assets\n')
+        fd.write('sys_game_folder={}\n'.format(asset_dir))
         fd.write('sys_dll_game={}\n'.format(dll_name))
 
 
