@@ -16,8 +16,12 @@ dll_name = 'Game.dll'
 def main():
     # Path to the project file as created by the launcher - engine and project path are derivable from this.
     cryproject_file = ''
+
+    with open(cryproject_file) as fd:
+        project_data = json.load(fd)
+
     project_path = os.path.dirname(cryproject_file)
-    engine_path = get_engine_path(cryproject_file)
+    engine_path = get_engine_path(project_data)
 
     # Path to which the game is to be exported.
     export_path = os.path.join(os.environ['HOMEDRIVE'], os.environ['HOMEPATH'], 'Desktop', 'ce_game')
@@ -29,6 +33,9 @@ def main():
     # Copy engine (common) files.
     copy_engine_assets(engine_path, export_path)
     copy_engine_binaries(engine_path, export_path, os.path.join('bin', 'win_x64'))
+
+    if 'csharp' in project_data:
+        copy_mono_files(engine_path, export_path)
 
     # Copy project-specific files.
     package_assets(project_path, export_path)
@@ -52,6 +59,7 @@ def copy_engine_binaries(engine_path, export_path, rel_dir):
                 'Qt*',
                 'mfc*',
                 'CryGame*',
+                'CryEngine.*.dll*',
                 'Sandbox*',
                 'ShaderCacheGen*',
                 'smpeg2*',
@@ -82,6 +90,23 @@ def copy_engine_binaries(engine_path, export_path, rel_dir):
         if not os.path.exists(os.path.dirname(destpath)):
             os.makedirs(os.path.dirname(destpath))
         shutil.copy(os.path.join(engine_path, path), destpath)
+
+
+def copy_mono_files(engine_path, export_path):
+    """
+    Copy mono directory and CRYENGINE C# libraries to export path.
+    """
+    input_bindir = os.path.join(engine_path, 'bin')
+    output_bindir = os.path.join(export_path, 'bin')
+
+    shutil.copytree(os.path.join(input_bindir, 'common'), os.path.join(output_bindir, 'common'))
+
+    for csharp_file in os.listdir(os.path.join(input_bindir, 'win_x64')):
+        # We've already copied the non-C# libraries, so skip them here.
+        if not fnmatch.fnmatch(csharp_file, 'CryEngine.*.dll'):
+            continue
+        shutil.copyfile(os.path.join(input_bindir, 'win_x64', csharp_file),
+                        os.path.join(output_bindir, 'win_x64', csharp_file))
 
 
 def copy_engine_assets(engine_path, export_path):
@@ -192,17 +217,14 @@ def copy_game_dll(project_path, export_path):
                         os.path.join(export_path, 'bin', 'win_x64', filename))
 
 
-def get_engine_path(cryproject_file):
+def get_engine_path(project_data):
     """
     Find the path to the project's engine by querying the registry on Windows.
     At the moment there is no way to register engine locations on Linux, so it is left as
     an exercise to the user to specify paths/determine a lookup scheme there.
-    :param cryproject_file: Path of the '.cryproject' file.
-    :return: Absolute path to the engine use by this project.
+    :param project_data: Data loaded from the .cryproject file.
+    :return: Absolute path to the engine used by this project.
     """
-
-    with open(cryproject_file) as fd:
-        project_data = json.load(fd)
 
     engine_tag = project_data['require']['engine']
     version = engine_tag.split('-')[1]              # 'engine-5.3' -> '5.3'
