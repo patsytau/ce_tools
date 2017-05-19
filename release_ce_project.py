@@ -179,6 +179,8 @@ def package_assets(asset_dir, project_path, export_path):
             continue
 
         if os.path.isfile(itempath):
+            if not os.path.exists(os.path.join(export_path, 'Assets')):
+                os.makedirs(os.path.join(export_path, 'Assets'))
             shutil.copyfile(itempath, os.path.join(output_assetpath, itemname))
         else:
             if use_7zip:
@@ -204,6 +206,7 @@ def create_config(asset_dir, export_path):
     with open(os.path.join(export_path, 'system.cfg'), 'w') as fd:
         fd.write('sys_game_folder={}\n'.format(asset_dir))
         fd.write('sys_dll_game={}\n'.format(dll_name))
+        fd.write('sys_PakLogInvalidFileAccess=0')
 
 
 def copy_game_dll(project_path, export_path):
