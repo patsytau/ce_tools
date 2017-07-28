@@ -292,8 +292,10 @@ def package_assets(asset_dir, project_path, export_path):
         itempath = os.path.join(input_assetpath, itemname)
 
         # Levels are handled elsewhere.
-        if 'levels' in itempath.lower():
+        if 'levels' in itemname.lower():
             continue
+            
+            
 
         # .cryasset.pak files are editor-only, and so do not belong in exported projects.
         if itempath.endswith('.cryasset.pak'):
@@ -302,24 +304,61 @@ def package_assets(asset_dir, project_path, export_path):
         if os.path.isfile(itempath):
             shutil.copyfile(itempath, os.path.join(output_assetpath, itemname))
         else:
-            if use_7zip:
-                zip_cmd = ['7z',
-                           'a',
-                           '-r',
-                           '-tzip',
-                           '-mx0',
-                           os.path.join(output_assetpath, '{}.pak'.format(itemname)),
-                           os.path.join(input_assetpath, itempath)]
-                subprocess.check_call(zip_cmd)
+            # Fastload is another special case
+            if '_fastload' in itemname.lower():
+                export_langpath = os.path.join(output_assetpath, "_fastload")
+                
+                # create export folder if necessary
+                if not os.path.exists(export_langpath):
+                    os.makedirs(export_langpath)
+                    
+                for sub_itemname in os.listdir(itempath):
+                    sub_itempath = os.path.join(itempath,sub_itemname)
+                    
+                    package_or_copy(sub_itemname, itempath, os.path.join(output_assetpath, itemname), use_7zip)
+                
+            
+            # Localization is a special case
+            elif 'localization' in itemname.lower():
+                export_langpath = os.path.join(output_assetpath, "localization")
+                
+                # create export folder if necessary
+                if not os.path.exists(export_langpath):
+                    os.makedirs(export_langpath)
+                
+                for sub_itemname in os.listdir(itempath):
+                    sub_itempath = os.path.join(itempath,sub_itemname)
+                    
+                    package_or_copy(sub_itemname, itempath, os.path.join(output_assetpath, itemname), use_7zip)
             else:
-                pakname = shutil.make_archive(base_name=os.path.join(output_assetpath, itemname),
-                                              format='zip',
-                                              root_dir=input_assetpath,
-                                              base_dir=itemname)
-                shutil.move(pakname, pakname.replace('.zip', '.pak'))
-            print('Created {}.pak'.format(itemname))
+                package_or_copy(itemname, input_assetpath, output_assetpath, use_7zip)
     return
 
+# Decides whether to package or just copy the supplied path based on whether the path is a file or a folder
+def package_or_copy(itemname, in_assetpath, out_assetpath, use7zip):
+    inpath = os.path.join(in_assetpath, itemname)
+    outpath = os.path.join(out_assetpath, itemname)
+    
+    if os.path.isfile(inpath):
+        shutil.copyfile(inpath, outpath)
+    else:
+        if use7zip:
+            zip_cmd = ['7z',
+                       'a',
+                       '-r',
+                       '-tzip',
+                       '-mx0',
+                       outpath,
+                       inpath]
+            subprocess.check_call(zip_cmd)
+        else:
+            pakname = shutil.make_archive(base_name=outpath,
+                                          format='zip',
+                                          root_dir=in_assetpath,
+                                          base_dir=itemname)
+            shutil.move(pakname, pakname.replace('.zip', '.pak'))
+        print('Created {}.pak'.format(itemname))
+    
 def create_config(asset_dir, export_path):
     with open(os.path.join(export_path, 'system.cfg'), 'w') as fd:
         fd.write('sys_game_folder={}\n'.format(asset_dir))
